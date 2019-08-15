@@ -23,6 +23,7 @@ class SoundWave:
         self._bar_count = self.bar_count
         self._skip_count = self.skip_count
         self._data = None
+        self._process_func = max
 
     @classmethod
     def from_file(cls, file):
@@ -65,13 +66,37 @@ class SoundWave:
         self._bar_count = count
         return self
 
-    def with_skip_count(self, count):
+    def with_skip_percent(self, ratio):
         """
-        only use every 'count' byte
-        :param count: new skip count
+        percentage of the data to ignore
+        :param ratio: ignore ratio
+        :return:
+        """
+        if ratio >= 1:
+            self._skip_count = 1
+        elif ratio >= 0:
+            self._skip_count = int(1 / (1 - ratio))
+        else:
+            raise Exception('invalid skip percentage')
+        return self
+
+    def using_maximum(self):
+        """
+        use maximum function
         :return: self
         """
-        self._skip_count = count
+        self._process_func = max
+        return self
+
+    def using_average(self):
+        """
+        use average function
+        :return: self
+        """
+        def avg(lst):
+            lst = list(lst)
+            return sum(lst) / len(lst)
+        self._process_func = avg
         return self
 
     def process(self):
@@ -85,16 +110,12 @@ class SoundWave:
         height_list = []
         max_height = 0
 
-        def avg(lst):
-            lst = list(lst)
-            return sum(lst) / len(lst)
-
         def chunks(l, n):
             for i in range(0, len(l), n):
                 yield l[i:i + n]
 
         for segment in chunks(data, int(len(data) / self._bar_count)):
-            height = max(map(lambda x: abs(x), segment))
+            height = self._process_func(map(lambda x: abs(x), segment))
             height_list.append(height)
             if max_height < height:
                 max_height = height
